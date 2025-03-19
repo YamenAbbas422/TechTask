@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Class ProductController
  *
- * Handles CRUD operations for products.
+ * Manages CRUD operations for products within the authenticated user's tenant.
  *
  * @package App\Http\Controllers
  */
@@ -22,9 +22,29 @@ class ProductController extends Controller
     use MessageTrait;
 
     /**
-     * Retrieve all products belonging to the authenticated user.
+     * Retrieve all products for the authenticated user's tenant.
+     *
+     * @authenticated
      *
      * @return \Illuminate\Http\JsonResponse List of products.
+     *
+     * @example
+     * GET /api/products
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": [
+     *        {
+     *            "id": 1,
+     *            "name": "Product A",
+     *            "description": "Description of product A",
+     *            "price": 99.99,
+     *            "stock_quantity": 10,
+     *            "tenant_id": 2
+     *        }
+     *    ],
+     *    "message": "Products retrieved successfully."
+     * }
      */
     public function index()
     {
@@ -36,8 +56,40 @@ class ProductController extends Controller
     /**
      * Store a new product.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing product details.
      * @return \Illuminate\Http\JsonResponse The created product.
+     *
+     * @example
+     * POST /api/products
+     * {
+     *    "name": "New Product",
+     *    "description": "This is a sample product",
+     *    "price": 199.99,
+     *    "stock_quantity": 15
+     * }
+     *
+     * @response 201 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 3,
+     *        "name": "New Product",
+     *        "description": "This is a sample product",
+     *        "price": 199.99,
+     *        "stock_quantity": 15,
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Product created successfully."
+     * }
+     *
+     * @response 422 {
+     *    "success": false,
+     *    "message": "Validation Error",
+     *    "errors": {
+     *        "name": ["The name field is required."]
+     *    }
+     * }
      */
     public function store(Request $request)
     {
@@ -62,8 +114,31 @@ class ProductController extends Controller
     /**
      * Retrieve a specific product by ID.
      *
-     * @param string $id The product ID.
+     * @authenticated
+     *
+     * @param int $id The product ID.
      * @return \Illuminate\Http\JsonResponse The requested product details.
+     *
+     * @example
+     * GET /api/products/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "name": "Product A",
+     *        "description": "Description of product A",
+     *        "price": 99.99,
+     *        "stock_quantity": 10,
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Product retrieved successfully."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Product not found."
+     * }
      */
     public function show(string $id)
     {
@@ -77,9 +152,33 @@ class ProductController extends Controller
     /**
      * Update an existing product.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing updated product details.
-     * @param string $id The product ID.
+     * @param int $id The product ID.
      * @return \Illuminate\Http\JsonResponse The updated product.
+     *
+     * @example
+     * PUT /api/products/1
+     * {
+     *    "name": "Updated Product",
+     *    "description": "Updated description",
+     *    "price": 149.99,
+     *    "stock_quantity": 20
+     * }
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "name": "Updated Product",
+     *        "description": "Updated description",
+     *        "price": 149.99,
+     *        "stock_quantity": 20,
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Product updated successfully."
+     * }
      */
     public function update(Request $request, string $id)
     {
@@ -111,8 +210,23 @@ class ProductController extends Controller
     /**
      * Delete a product.
      *
-     * @param string $id The product ID.
+     * @authenticated
+     *
+     * @param int $id The product ID.
      * @return \Illuminate\Http\JsonResponse Success or error message.
+     *
+     * @example
+     * DELETE /api/products/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "message": "Product deleted successfully."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Product not found."
+     * }
      */
     public function destroy(string $id)
     {

@@ -23,7 +23,28 @@ class OrderController extends Controller
     /**
      * Retrieve all orders belonging to the authenticated user's tenant.
      *
+     * @authenticated
+     *
      * @return \Illuminate\Http\JsonResponse List of orders.
+     *
+     * @example
+     * GET /api/orders
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": [
+     *        {
+     *            "id": 1,
+     *            "product_id": 5,
+     *            "customer_id": 3,
+     *            "quantity": 2,
+     *            "total_price": 199.98,
+     *            "status": "pending",
+     *            "tenant_id": 2
+     *        }
+     *    ],
+     *    "message": "Orders retrieved successfully."
+     * }
      */
     public function index()
     {
@@ -35,8 +56,40 @@ class OrderController extends Controller
     /**
      * Store a new order.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing order details.
      * @return \Illuminate\Http\JsonResponse The created order.
+     *
+     * @example
+     * POST /api/orders
+     * {
+     *    "product_id": 5,
+     *    "customer_id": 3,
+     *    "quantity": 2
+     * }
+     *
+     * @response 201 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 2,
+     *        "product_id": 5,
+     *        "customer_id": 3,
+     *        "quantity": 2,
+     *        "total_price": 199.98,
+     *        "status": "pending",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Order created successfully."
+     * }
+     *
+     * @response 422 {
+     *    "success": false,
+     *    "message": "Validation Error",
+     *    "errors": {
+     *        "product_id": ["The selected product_id is invalid."]
+     *    }
+     * }
      */
     public function store(Request $request)
     {
@@ -72,8 +125,27 @@ class OrderController extends Controller
     /**
      * Retrieve a specific order by ID.
      *
-     * @param string $id The order ID.
+     * @authenticated
+     *
+     * @param int $id The order ID.
      * @return \Illuminate\Http\JsonResponse The requested order details.
+     *
+     * @example
+     * GET /api/orders/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "product_id": 5,
+     *        "customer_id": 3,
+     *        "quantity": 2,
+     *        "total_price": 199.98,
+     *        "status": "pending",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Order retrieved successfully."
+     * }
      */
     public function show(string $id)
     {
@@ -87,15 +159,60 @@ class OrderController extends Controller
     /**
      * Update an existing order.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing updated order details.
-     * @param string $id The order ID.
+     * @param int $id The order ID.
      * @return \Illuminate\Http\JsonResponse The updated order.
+     *
+     * @example
+     * PUT /api/orders/1
+     * {
+     *    "quantity": 5,
+     *    "status": "processed"
+     * }
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "product_id": 5,
+     *        "customer_id": 3,
+     *        "quantity": 5,
+     *        "total_price": 499.95,
+     *        "status": "processed",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Order updated successfully."
+     * }
+     *
+     * @response 403 {
+     *    "success": false,
+     *    "message": "Order cannot be updated once it has been shipped or delivered."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Order not found."
+     * }
+     *
+     * @response 422 {
+     *    "success": false,
+     *    "message": "Validation Error",
+     *    "errors": {
+     *        "quantity": ["The quantity must be at least 1."]
+     *    }
+     * }
      */
     public function update(Request $request, string $id)
     {
         $order = Order::find($id);
         if (!$order) {
             return $this->sendError('Order not found.');
+        }
+
+        if (in_array($order->status, ['shipped', 'delivered'])) {
+            return $this->sendError('Order cannot be updated once it has been shipped or delivered.', [], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -107,18 +224,26 @@ class OrderController extends Controller
             return $this->sendError('Validation Error', $validator->errors(), 422);
         }
 
+        $product = Product::find($order->product_id);
+        if (!$product) {
+            return $this->sendError('Product associated with this order not found.', [], 404);
+        }
+
         if ($request->has('quantity')) {
-            $product = Product::find($order->product_id);
-            if ($product->stock_quantity + $order->quantity < $request->quantity) {
+            $newQuantity = $request->quantity;
+            $oldQuantity = $order->quantity;
+            $quantityDifference = $newQuantity - $oldQuantity;
+            if ($quantityDifference > 0 && $product->stock_quantity < $quantityDifference) {
                 return $this->sendError('Quantity Error', ['quantity' => 'Not enough stock available'], 422);
             }
+            if ($quantityDifference > 0) {
+                $product->decrement('stock_quantity', $quantityDifference);
+            } elseif ($quantityDifference < 0) {
+                $product->increment('stock_quantity', abs($quantityDifference));
+            }
 
-            // Adjust stock quantity
-            $product->increment('stock_quantity', $order->quantity);
-            $product->decrement('stock_quantity', $request->quantity);
-
-            $order->quantity = $request->quantity;
-            $order->total_price = $request->quantity * $product->price;
+            $order->quantity = $newQuantity;
+            $order->total_price = $newQuantity * $product->price;
         }
 
         if ($request->has('status')) {
@@ -133,8 +258,23 @@ class OrderController extends Controller
     /**
      * Delete an order.
      *
-     * @param string $id The order ID.
+     * @authenticated
+     *
+     * @param int $id The order ID.
      * @return \Illuminate\Http\JsonResponse Success or error message.
+     *
+     * @example
+     * DELETE /api/orders/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "message": "Order deleted successfully."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Order not found."
+     * }
      */
     public function destroy(string $id)
     {
@@ -149,9 +289,26 @@ class OrderController extends Controller
     /**
      * Update the status of an order.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing the new status.
-     * @param string $id The order ID.
+     * @param int $id The order ID.
      * @return \Illuminate\Http\JsonResponse The updated order status.
+     *
+     * @example
+     * PUT /api/orders/1/status
+     * {
+     *    "status": "shipped"
+     * }
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "status": "shipped"
+     *    },
+     *    "message": "Order status updated successfully."
+     * }
      */
     public function updateStatus(Request $request, $id)
     {

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Class CustomerController
  *
- * Handles CRUD operations for customers.
+ * Manages customer CRUD operations within the authenticated user's tenant.
  *
  * @package App\Http\Controllers
  */
@@ -21,9 +21,28 @@ class CustomerController extends Controller
     use MessageTrait;
 
     /**
-     * Retrieve all customers belonging to the authenticated user's tenant.
+     * Retrieve all customers for the authenticated user's tenant.
+     *
+     * @authenticated
      *
      * @return \Illuminate\Http\JsonResponse List of customers.
+     *
+     * @example
+     * GET /api/customers
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": [
+     *        {
+     *            "id": 1,
+     *            "name": "Customer 1",
+     *            "email": "customer1@example.com",
+     *            "phone": "123456789",
+     *            "tenant_id": 2
+     *        }
+     *    ],
+     *    "message": "Customers retrieved successfully."
+     * }
      */
     public function index()
     {
@@ -35,8 +54,38 @@ class CustomerController extends Controller
     /**
      * Store a new customer.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing customer details.
      * @return \Illuminate\Http\JsonResponse The created customer.
+     *
+     * @example
+     * POST /api/customers
+     * {
+     *    "name": "Customer 2",
+     *    "email": "customer2@example.com",
+     *    "phone": "987654321"
+     * }
+     *
+     * @response 201 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 2,
+     *        "name": "Customer 2",
+     *        "email": "customer2@example.com",
+     *        "phone": "987654321",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Customer created successfully."
+     * }
+     *
+     * @response 422 {
+     *    "success": false,
+     *    "message": "Validation Error",
+     *    "errors": {
+     *        "email": ["The email has already been taken."]
+     *    }
+     * }
      */
     public function store(Request $request)
     {
@@ -61,8 +110,30 @@ class CustomerController extends Controller
     /**
      * Retrieve a specific customer by ID.
      *
-     * @param string $id The customer ID.
+     * @authenticated
+     *
+     * @param int $id The customer ID.
      * @return \Illuminate\Http\JsonResponse The requested customer details.
+     *
+     * @example
+     * GET /api/customers/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *        "name": "Customer 2",
+     *        "email": "customer2@example.com",
+     *        "phone": "123456789",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Customer retrieved successfully."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Customer not found."
+     * }
      */
     public function show(string $id)
     {
@@ -76,9 +147,31 @@ class CustomerController extends Controller
     /**
      * Update an existing customer's details.
      *
+     * @authenticated
+     *
      * @param \Illuminate\Http\Request $request The request containing updated customer details.
-     * @param string $id The customer ID.
+     * @param int $id The customer ID.
      * @return \Illuminate\Http\JsonResponse The updated customer.
+     *
+     * @example
+     * PUT /api/customers/1
+     * {
+     *    "name": "Customer 1 Updated",
+     *    "email": "customer1updated@example.com",
+     *    "phone": "111222333"
+     * }
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "data": {
+     *        "id": 1,
+     *    "name": "Customer 1 Updated",
+     *    "email": "customer1updated@example.com",
+     *        "phone": "111222333",
+     *        "tenant_id": 2
+     *    },
+     *    "message": "Customer updated successfully."
+     * }
      */
     public function update(Request $request, string $id)
     {
@@ -108,8 +201,23 @@ class CustomerController extends Controller
     /**
      * Delete a customer.
      *
-     * @param string $id The customer ID.
+     * @authenticated
+     *
+     * @param int $id The customer ID.
      * @return \Illuminate\Http\JsonResponse Success or error message.
+     *
+     * @example
+     * DELETE /api/customers/1
+     *
+     * @response 200 {
+     *    "success": true,
+     *    "message": "Customer deleted successfully."
+     * }
+     *
+     * @response 404 {
+     *    "success": false,
+     *    "message": "Customer not found."
+     * }
      */
     public function destroy(string $id)
     {

@@ -13,7 +13,7 @@ use Laravel\Passport\Passport;
 /**
  * Class AuthController
  *
- * Handles authentication and user registration.
+ * This controller handles authentication, registration, and logout processes.
  *
  * @package App\Http\Controllers
  */
@@ -26,6 +26,27 @@ class AuthController extends Controller
      *
      * @param \Illuminate\Http\Request $request The request containing user registration data.
      * @return \Illuminate\Http\JsonResponse The registered user with an access token.
+     *
+     * @example
+     * POST /api/register
+     * {
+     *    "name": "Yamen Abbas",
+     *    "email": "yamenabbas@example.com",
+     *    "tenant_name": "YamenStore",
+     *    "password": "password123",
+     *    "password_confirmation": "password123"
+     * }
+     *
+     * @response
+     * HTTP 201 Created
+     * {
+     *    "success": true,
+     *    "data": {
+     *        "token": "your_token_here",
+     *        "name": "Yamen Abbas"
+     *    },
+     *    "message": "User registered successfully."
+     * }
      */
     public function register(Request $request)
     {
@@ -58,6 +79,31 @@ class AuthController extends Controller
      *
      * @param \Illuminate\Http\Request $request The request containing login credentials.
      * @return \Illuminate\Http\JsonResponse The authenticated user with an access token.
+     *
+     * @example
+     * POST /api/login
+     * {
+     *    "email": "yamenabbas@example.com",
+     *    "password": "password123"
+     * }
+     *
+     * @response
+     * HTTP 200 OK
+     * {
+     *    "success": true,
+     *    "data": {
+     *        "token": "your_token_here",
+     *        "name": "Yamen Abbas"
+     *    },
+     *    "message": "User login successfully."
+     * }
+     *
+     * @response
+     * HTTP 401 Unauthorized
+     * {
+     *    "success": false,
+     *    "message": "Unauthorized"
+     * }
      */
     public function login(Request $request)
     {
@@ -83,6 +129,24 @@ class AuthController extends Controller
      *
      * @param \Illuminate\Http\Request $request The request from the authenticated user.
      * @return \Illuminate\Http\JsonResponse Success message.
+     *
+     * @example
+     * POST /api/logout
+     * Header: Authorization: Bearer your_token_here
+     *
+     * @response
+     * HTTP 200 OK
+     * {
+     *    "success": true,
+     *    "message": "Logged out successfully."
+     * }
+     *
+     * @response
+     * HTTP 401 Unauthorized
+     * {
+     *    "success": false,
+     *    "message": "No user authenticated."
+     * }
      */
     public function destroy(Request $request)
     {
